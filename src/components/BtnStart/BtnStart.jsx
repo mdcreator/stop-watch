@@ -26,7 +26,7 @@ export default function BtnStartStop({ onClick }) {
   return (
     <div>
       <button className={classes.btn} onClick={onClick}>
-        Start/Stop
+        Start
       </button>
     </div>
   );

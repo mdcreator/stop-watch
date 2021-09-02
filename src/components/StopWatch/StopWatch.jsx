@@ -1,10 +1,12 @@
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { createUseStyles } from 'react-jss';
 
 import { interval, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-import BtnStartStop from '../BtnStartStop';
+import BtnStart from '../BtnStart';
+import BtnStop from '../BtnStop';
 import BtnReset from '../BtnReset';
 import BtnWait from '../BtnWait';
 
@@ -101,79 +103,66 @@ const useStyle = createUseStyles({
       marginBottom: '25px',
     },
   },
-});
 
-const cn = (...args) => {
-  return args.filter(x => x).join(' ');
-};
+  buttons: {
+    display: 'flex',
+    justifyContent: 'center',
+  },
+});
 
 export default function StopWatch() {
   const [seconds, setSeconds] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
+  const [status, setStatus] = useState('start' | 'stop' | 'reset' | 'wait');
 
   const classes = useStyle();
 
   useEffect(() => {
-    if (isRunning) {
-      const id = window.setInterval(() => {
-        setSeconds(seconds => seconds + 1);
-      }, 1000);
+    const unsubscribe$ = new Subject();
+    interval(1000)
+      .pipe(takeUntil(unsubscribe$))
+      .subscribe(() => {
+        if (status === 'run') {
+          setSeconds(val => val + 1000);
+        }
+      });
 
-      return () => window.clearInterval(id);
-    }
-  }, [isRunning]);
+    return () => {
+      unsubscribe$.next();
+      unsubscribe$.complete();
+    };
+  }, [status]);
 
-  const displaySeconds = (seconds % 60).toString().padStart(2, '0');
-  const displayMinutes = Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, '0');
-  const displayHours = Math.floor(seconds / (60 * 60))
-    .toString()
-    .padStart(2, '0');
+  const start = React.useCallback(() => {
+    setStatus('run');
+  }, []);
 
-  const handleOnStart = () => {
-    setIsRunning(false);
+  const stop = React.useCallback(() => {
+    setStatus('stop');
     setSeconds(0);
-  };
+  }, []);
 
-  const handleOnWait = () => {
-    setTimeout(function () {}, 3000);
-    setIsRunning(false);
-  };
-
-  const handleOnReset = () => {
-    setIsRunning(true);
+  const reset = React.useCallback(() => {
     setSeconds(0);
-  };
+  }, []);
+
+  const wait = React.useCallback(() => {
+    setStatus('wait');
+  }, []);
 
   return (
     <div className={classes.timer} id="timer-1">
       <h1 className={classes.timerTitle}>Birthday party</h1>
       <p className={classes.titleDescr}>🥳 Let's get this party started 🥳</p>
+      <span> {new Date(seconds).toISOString().slice(11, 19)}</span>
 
-      <div className={cn(!isRunning)}>
-        {isRunning ? (
-          <BtnStartStop onClick={handleOnStart}></BtnStartStop>
-        ) : (
-          <BtnStartStop onClick={() => setIsRunning(true)}></BtnStartStop>
-        )}
-        <BtnReset onClick={handleOnReset}></BtnReset>
-        <BtnWait onClick={handleOnWait}></BtnWait>
-      </div>
+      <div className={classes.buttons}>
+        <BtnStart onClick={start} />
 
-      <div className={classes.field}>
-        {displayHours}
-        <span className={classes.label}>Hours</span>
-      </div>
+        <BtnStop onClick={stop} />
 
-      <div className={classes.field}>
-        {displayMinutes}
-        <span className={classes.label}>Minutes</span>
-      </div>
+        <BtnReset onClick={reset} />
 
-      <div className={classes.field}>
-        {displaySeconds}
-        <span className={classes.label}>Seconds</span>
+        <BtnWait onClick={wait} />
       </div>
     </div>
   );
